@@ -1,0 +1,11 @@
+
+#data dir
+data/
+
+# add all basic python gitignore
+
+
+__pycache__/
+
+
+
