@@ -14,5 +14,7 @@ rag_response = client.rag(
     rag_generation_config={"model": "openai/gpt-4o-mini", "temperature": 0.0},
 )
 results = rag_response["results"]
+
+delete_response = client.remove_document_from_collection()
 print(f"Search Results:\n{results['search_results']}")
 print(f"Completion:\n{results['completion']}")
