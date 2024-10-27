@@ -27,8 +27,6 @@ def list_documents():
     return response.json()
 
 
-
-
 def delete_files():
     url = f"{BASE_URL}/v2/delete"
     document_id = "30f950f0-c692-57c5-b6ec-ff78ccf5ccdc"
@@ -42,14 +40,17 @@ def delete_files():
         "filters": json.dumps(filters)  # Convert filters to JSON string
     }
     
-    
     response = requests.delete(url, params=params)
     
-
-    return response.json()
+    try:
+        return response.json()
+    except:
+        return response.status_code
 
 if __name__ == "__main__":
     update_files()
+    res = delete_files()
+    print(f'Deleted {res} documents')
     results = list_documents()
 
     for result in results['results']:

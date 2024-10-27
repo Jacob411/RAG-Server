@@ -1,7 +1,7 @@
 
 #data dir
 data/
-
+logs/
 # add all basic python gitignore
 
 
