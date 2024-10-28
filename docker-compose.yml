@@ -1,5 +1,3 @@
-# docker-compose.yml
-
 version: '3.8'
 
 services:
@@ -10,6 +8,15 @@ services:
     ports:
       - "8000:8000"  # FastAPI server
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}  # Use the environment variable from the host
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Use the environment variable from the host
+      - BASE_URL=http://localhost:7272
+      - LOG_LEVEL=INFO
     volumes:
       - .:/app  # Mount the current directory to /app in the container
+      - ./logs:/app/logs  # Persist logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
