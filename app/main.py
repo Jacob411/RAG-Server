@@ -7,6 +7,12 @@ import json
 import logging
 from datetime import datetime
 
+from app.models.document import DocumentItem, DocumentsResponse, DeleteResponse
+from app.models.rag import RagRequest, RagResponse
+from app.models.search import SearchRequest, SearchResponse
+from app.utils.http import make_request
+from app.config import get_settings
+
 # Setup logging
 logging.basicConfig(
     filename=f'logs/rag_api_{datetime.now().strftime("%Y%m%d")}.log',
@@ -15,10 +21,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+settings = get_settings()
+
 app = FastAPI(title="RAG API", description="API for managing RAG documents")
 
 # CORS middleware
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Update this with your frontend URL in production
@@ -27,59 +34,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuration
-BASE_URL = "http://localhost:7272"
-
-class DocumentItem(BaseModel):
-    id: str = Field(..., description="Document unique identifier")
-    title: str = Field(..., description="Document title")
-    user_id: str = Field(..., description="User identifier")
-    type: str = Field(..., description="Document type (e.g., pdf, txt)")
-    created_at: str = Field(..., description="Creation timestamp")
-
-class DocumentsResponse(BaseModel):
-    results: List[DocumentItem] = Field(..., description="Array of document items")
-
-
-class DeleteResponse(BaseModel):
-    success: bool
-    message: str
-    status_code: int
-
-class RagRequest(BaseModel):
-    query: str = Field(..., description="Query to send to the RAG server")
-
-class RagResponse(BaseModel):
-    results: List[Dict[str, Any]] = Field(..., description="Array of RAG results")
-
-
-# Helper function for making HTTP requests
-async def make_request(method: str, endpoint: str, **kwargs) -> Dict[Any, Any]:
-    """
-    Helper function to make HTTP requests to the RAG server
-    """
-    url = f"{BASE_URL}{endpoint}"
-    logger.info(f"Making {method} request to {url}")
-    
-    try:
-        response = requests.request(method, url, **kwargs)
-        response.raise_for_status()
-        try:
-            return response.json()
-        except:
-            return response.text
-    except Exception as e:
-  
-        logger.error(f"Request failed: {str(e)}")
-
-        return {
-            "success": False,
-            "message": f"Request failed: {str(e)}",
-            "status_code": 500
-        }
-
-
-@app.post("/rag")
+# Endpoints
+@app.post("/rag", response_model=RagResponse)
 async def rag(request: RagRequest):
     """
     Send a query to the RAG server
@@ -87,27 +43,63 @@ async def rag(request: RagRequest):
     logger.info(f"Sending query to RAG: {request}")
     
     try:
-        query = {
-            "query": request.query
-        }
         response = await make_request(
+            settings.base_url,
             "POST",
             "/v2/rag",
             data=json.dumps({"query": request.query}),
-
             headers={"Content-Type": "application/json"}
         )
+        
+        if isinstance(response, dict) and not response.get("success", True):
+            raise HTTPException(
+                status_code=response.get("status_code", 500),
+                detail=response.get("message", "RAG query failed")
+            )
         
         return response
         
     except Exception as e:
         logger.error(f"RAG query failed: {str(e)}")
-        return {
-            "success": False,
-            "message": f"RAG query failed: {str(e)}",
-            "status_code": 500
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"RAG query failed: {str(e)}"
+        )
 
+@app.post("/search", response_model=SearchResponse)
+async def search(request: SearchRequest):
+    """
+    Execute a search query against the RAG server with support for vector and knowledge graph search
+    """
+    logger.info(f"Processing search request: {request.query}")
+    
+    try:
+        payload = request.model_dump(exclude_none=True, exclude_unset=True)
+
+        response = await make_request(
+            settings.base_url,
+            method="POST",
+            endpoint="/v2/search",
+            data=json.dumps(payload),
+            headers={"Content-Type": "application/json"}
+        )
+
+        if isinstance(response, dict) and not response.get("success", True):
+            logger.error(f"Search request failed: {response.get('message')}")
+            raise HTTPException(
+                status_code=response.get("status_code", 500),
+                detail=response.get("message", "Search request failed")
+            )
+
+        logger.info("Search request completed successfully")
+        return SearchResponse(**response)
+
+    except Exception as e:
+        logger.error(f"Search operation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search operation failed: {str(e)}"
+        )
 
 @app.post("/documents/ingest")
 async def ingest_files(files: List[UploadFile] = File(...)):
@@ -123,6 +115,7 @@ async def ingest_files(files: List[UploadFile] = File(...)):
             }
             
             response = await make_request(
+                settings.base_url,
                 "POST",
                 "/v2/ingest_files",
                 files=files_dict
@@ -134,11 +127,10 @@ async def ingest_files(files: List[UploadFile] = File(...)):
         
     except Exception as e:
         logger.error(f"File upload failed: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Failed to upload files: {str(e)}",
-            "status_code": 500
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload files: {str(e)}"
+        )
 
 @app.get("/documents", response_model=DocumentsResponse)
 async def list_documents():
@@ -148,16 +140,19 @@ async def list_documents():
     logger.info("Fetching documents overview")
     
     try:
-        response = await make_request("GET", "/v2/documents_overview")
+        response = await make_request(
+            settings.base_url, 
+            "GET", 
+            "/v2/documents_overview"
+        )
         return response
         
     except Exception as e:
         logger.error(f"Failed to fetch documents: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Failed to fetch documents: {str(e)}",
-            "status_code": 500
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch documents: {str(e)}"
+        )
 
 @app.delete("/documents/{document_id}", response_model=DeleteResponse)
 async def delete_document(document_id: str):
@@ -177,8 +172,8 @@ async def delete_document(document_id: str):
             "filters": json.dumps(filters)
         }
         
-        # Try to get JSON response
         response = await make_request(
+            settings.base_url,
             "DELETE",
             "/v2/delete",
             params=params
@@ -199,14 +194,17 @@ async def delete_document(document_id: str):
             status_code=500
         )
 
-# Health check endpoint
 @app.get("/health")
 async def health_check():
     """
     Check if the API is running and can connect to the RAG server
     """
     try:
-        await make_request("GET", "/v2/documents_overview")
+        await make_request(
+            settings.base_url,
+            "GET", 
+            "/v2/documents_overview"
+        )
         return {"status": "healthy", "rag_server": "connected"}
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
