@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="RAG API", description="API for managing RAG documents")
 
 # CORS middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Update this with your frontend URL in production
@@ -45,6 +46,13 @@ class DeleteResponse(BaseModel):
     message: str
     status_code: int
 
+class RagRequest(BaseModel):
+    query: str = Field(..., description="Query to send to the RAG server")
+
+class RagResponse(BaseModel):
+    results: List[Dict[str, Any]] = Field(..., description="Array of RAG results")
+
+
 # Helper function for making HTTP requests
 async def make_request(method: str, endpoint: str, **kwargs) -> Dict[Any, Any]:
     """
@@ -69,6 +77,38 @@ async def make_request(method: str, endpoint: str, **kwargs) -> Dict[Any, Any]:
             "message": f"Request failed: {str(e)}",
             "status_code": 500
         }
+
+
+@app.post("/rag")
+async def rag(request: RagRequest):
+    """
+    Send a query to the RAG server
+    """
+    logger.info(f"Sending query to RAG: {request}")
+    
+    try:
+        query = {
+            "query": request.query
+        }
+        response = await make_request(
+            "POST",
+            "/v2/rag",
+            data=json.dumps({"query": request.query}),
+
+            headers={"Content-Type": "application/json"}
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"RAG query failed: {str(e)}")
+        return {
+            "success": False,
+            "message": f"RAG query failed: {str(e)}",
+            "status_code": 500
+        }
+
+
 @app.post("/documents/ingest")
 async def ingest_files(files: List[UploadFile] = File(...)):
     """
@@ -158,6 +198,7 @@ async def delete_document(document_id: str):
             message=f"Failed to delete document: {str(e)}",
             status_code=500
         )
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():

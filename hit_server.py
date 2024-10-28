@@ -47,13 +47,28 @@ def delete_files():
     except:
         return response.status_code
 
+
+def rag(query):
+    url = f"{BASE_URL}/v2/rag"
+    query = {
+        "query": query,
+
+    }
+    response = requests.post(url, data=json.dumps(query), headers={"Content-Type": "application/json"})
+    
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    return response.json()
+
 if __name__ == "__main__":
-    update_files()
-    res = delete_files()
-    print(f'Deleted {res} documents')
     results = list_documents()
 
     for result in results['results']:
         print(result['title'])
 
+    
+    query = "What is the capital of France?"
+    results = rag(query)['results']['completion']
+    print(json.dumps(results, indent=2))
 
