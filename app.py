@@ -69,33 +69,34 @@ async def make_request(method: str, endpoint: str, **kwargs) -> Dict[Any, Any]:
             "message": f"Request failed: {str(e)}",
             "status_code": 500
         }
-
 @app.post("/documents/ingest")
-async def ingest_files(file: UploadFile = File(...)):
+async def ingest_files(files: List[UploadFile] = File(...)):
     """
-    Upload a file to the RAG server
+    Upload multiple files to the RAG server
     """
-    logger.info(f"Uploading file: {file.filename}")
-    
     try:
-        files = {
-            'files': (file.filename, await file.read(), file.content_type)
-        }
+        results = []
+        for file in files:
+            logger.info(f"Uploading file: {file.filename}")
+            files_dict = {
+                'files': (file.filename, await file.read(), file.content_type)
+            }
+            
+            response = await make_request(
+                "POST",
+                "/v2/ingest_files",
+                files=files_dict
+            )
+            results.append(response)
         
-        response = await make_request(
-            "POST",
-            "/v2/ingest_files",
-            files=files
-        )
-        
-        logger.info(f"File upload successful: {file.filename}")
-        return response
+        logger.info("All files uploaded successfully")
+        return results
         
     except Exception as e:
         logger.error(f"File upload failed: {str(e)}")
         return {
             "success": False,
-            "message": f"Failed to upload file: {str(e)}",
+            "message": f"Failed to upload files: {str(e)}",
             "status_code": 500
         }
 
