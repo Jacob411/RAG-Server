@@ -138,15 +138,13 @@ async def list_documents():
     Get overview of all documents
     """
     logger.info("Fetching documents overview")
-    
     try:
         response = await make_request(
-            settings.base_url, 
-            "GET", 
+            settings.base_url,
+            "GET",
             "/v2/documents_overview"
         )
         return response
-        
     except Exception as e:
         logger.error(f"Failed to fetch documents: {str(e)}")
         raise HTTPException(
