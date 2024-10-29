@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
-    base_url: str = "http://localhost:7272"
+    base_url: str = "http://host.docker.internal:7272"
     log_level: str = "INFO"
     
     class Config:

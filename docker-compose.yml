@@ -1,4 +1,7 @@
-version: '3.8'
+networks:
+  r2r-network:
+    external: 
+      name: r2r_r2r-network  # Connect to existing r2r network
 
 services:
   rag-server:
@@ -6,14 +9,16 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"  # FastAPI server
+      - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Use the environment variable from the host
-      - BASE_URL=http://localhost:7272
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BASE_URL=http://r2r-r2r-1:7272  # Change this to the actual r2r service name
       - LOG_LEVEL=INFO
     volumes:
-      - .:/app  # Mount the current directory to /app in the container
-      - ./logs:/app/logs  # Persist logs
+      - .:/app
+      - ./logs:/app/logs
+    networks:
+      - r2r-network  # Add this to connect to r2r network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
