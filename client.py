@@ -1,5 +1,8 @@
+import io
 import requests
 from typing import Dict, Any
+from fastapi import UploadFile
+from pathlib import Path
 
 class RAGClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
@@ -7,10 +10,12 @@ class RAGClient:
 
     def ingest_file(self, file_path: str) -> Dict[str, Any]:
         """Ingest a file to the RAG server"""
-        with open(file_path, 'rb') as f:
-            files = {'file': f}
-            response = requests.post(f"{self.base_url}/documents/ingest", files=files)
-            return response.json()
+        files = {
+        'files': (Path(file_path).name, open(file_path, 'rb'), 'text/plain')
+        }
+        response = requests.post(f"{self.base_url}/documents/ingest", files=files)
+        return response.json()
+
 
     def list_documents(self) -> Dict[str, Any]:
         """Get list of all documents"""

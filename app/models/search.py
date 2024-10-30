@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 
+# Request Models
 class VectorSearchSettings(BaseModel):
     use_vector_search: bool = Field(True, description="Whether to use vector search")
     use_hybrid_search: bool = Field(False, description="Whether to perform a hybrid search")
@@ -15,16 +16,6 @@ class VectorSearchSettings(BaseModel):
     ef_search: Optional[int] = Field(40, description="Size of the dynamic candidate list for HNSW index search")
     hybrid_search_settings: Optional[Dict[str, Any]] = Field(None, description="Settings for hybrid search")
     search_strategy: str = Field("vanilla", description="Search strategy to use")
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "use_vector_search": True,
-                "search_limit": 10,
-                "search_strategy": "vanilla"
-            }]
-        }
-    }
 
 class KGSearchSettings(BaseModel):
     search_filters: Optional[Dict[str, Any]] = Field(None, description="Filters to apply to the search")
@@ -38,21 +29,12 @@ class KGSearchSettings(BaseModel):
     max_community_description_length: int = Field(65536, description="Max length for community descriptions")
     max_llm_queries_for_global_search: int = Field(250, description="Max LLM queries for global search")
     local_search_limits: Optional[Dict[str, Any]] = Field(None, description="Local search limits")
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "use_kg_search": False,
-                "kg_search_type": "local"
-            }]
-        }
-    }
 
 class SearchRequest(BaseModel):
     query: str = Field(..., description="Search query")
     vector_search_settings: Optional[VectorSearchSettings] = Field(None, description="Vector search settings")
     kg_search_settings: Optional[KGSearchSettings] = Field(None, description="Knowledge graph search settings")
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [{
@@ -68,37 +50,49 @@ class SearchRequest(BaseModel):
         }
     }
 
-class SearchResult(BaseModel):
-    id: str = Field(..., description="Result identifier")
-    score: float = Field(..., description="Search result score")
-    content: str = Field(..., description="Result content")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Result metadata")
-    
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "id": "doc123",
-                "score": 0.95,
-                "content": "Sample content",
-                "metadata": {"source": "document1.pdf"}
-            }]
-        }
-    }
+# Response Models
+class VectorSearchMetadata(BaseModel):
+    version: str
+    chunk_order: int
+    document_type: str
+    associated_query: str
+
+class VectorSearchResult(BaseModel):
+    extraction_id: str
+    document_id: str
+    user_id: str
+    collection_ids: List[str]
+    score: float
+    text: str
+    metadata: VectorSearchMetadata
+
+class SearchResults(BaseModel):
+    vector_search_results: List[VectorSearchResult]
+    kg_search_results: Optional[Any] = None
 
 class SearchResponse(BaseModel):
-    vector_search_results: List[SearchResult] = Field(..., description="List of vector search results")
-    kg_search_results: Optional[List[SearchResult]] = Field(None, description="Knowledge graph search results, if applicable")
-    
+    results: SearchResults
+
     model_config = {
         "json_schema_extra": {
             "examples": [{
-                "vector_search_results": [{
-                    "id": "doc123",
-                    "score": 0.95,
-                    "content": "Sample content",
-                    "metadata": {"source": "document1.pdf"}
-                }],
-                "kg_search_results": None
+                "results": {
+                    "vector_search_results": [{
+                        "extraction_id": "123",
+                        "document_id": "456",
+                        "user_id": "789",
+                        "collection_ids": ["abc"],
+                        "score": 0.95,
+                        "text": "Sample content",
+                        "metadata": {
+                            "version": "v0",
+                            "chunk_order": 0,
+                            "document_type": "txt",
+                            "associated_query": "query"
+                        }
+                    }],
+                    "kg_search_results": None
+                }
             }]
         }
     }
