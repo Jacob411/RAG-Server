@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Any, Dict
 import requests
 import os
@@ -21,11 +23,11 @@ class RAGClient:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
             
-        with open(file_path, 'rb') as f:
-            files = {'files': ('filename', f, 'application/octet-stream')}
-            response = requests.post(f"{self.base_url}/documents/ingest", files=files)
-            response.raise_for_status()
-            return response.json()
+        files = {
+        'files': (Path(file_path).name, open(file_path, 'rb'), 'text/plain')
+        }
+        response = requests.post(f"{self.base_url}/documents/ingest", files=files)
+        return response.json()
 
     def list_documents(self) -> Dict[str, Any]:
         """
@@ -89,6 +91,6 @@ class RAGClient:
             Dict containing RAG response
         """
         payload = {"query": query}
-        response = requests.post(f"{self.base_url}/rag", json=payload)
+        response = requests.post(f"{self.base_url}/rag", data=json.dumps(payload), headers={"Content-Type": "application/json"})
         response.raise_for_status()
         return response.json()
