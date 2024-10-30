@@ -83,9 +83,11 @@ async def search(request: SearchRequest):
             data=json.dumps(payload),
             headers={"Content-Type": "application/json"}
         )
+        print(response)
 
         if isinstance(response, dict) and not response.get("success", True):
             logger.error(f"Search request failed: {response.get('message')}")
+            print(response)
             raise HTTPException(
                 status_code=response.get("status_code", 500),
                 detail=response.get("message", "Search request failed")

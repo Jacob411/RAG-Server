@@ -5,7 +5,7 @@ class DocumentItem(BaseModel):
     id: str = Field(..., description="Document unique identifier")
     title: str = Field(..., description="Document title")
     user_id: str = Field(..., description="User identifier")
-    type: str = Field(..., description="Document type (e.g., pdf, txt)")
+    document_type: str = Field(..., description="Document type (e.g., pdf, txt)")
     created_at: str = Field(..., description="Creation timestamp")
     
     model_config = {
@@ -14,7 +14,7 @@ class DocumentItem(BaseModel):
                 "id": "doc123",
                 "title": "Sample Document",
                 "user_id": "user1",
-                "type": "pdf",
+                "document_type": "pdf",
                 "created_at": "2024-03-21T10:00:00Z"
             }]
         }
@@ -30,7 +30,7 @@ class DocumentsResponse(BaseModel):
                     "id": "doc123",
                     "title": "Sample Document",
                     "user_id": "user1",
-                    "type": "pdf",
+                    "document_type": "pdf",
                     "created_at": "2024-03-21T10:00:00Z"
                 }]
             }]
