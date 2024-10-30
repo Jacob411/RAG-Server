@@ -95,7 +95,6 @@ class TestRAGClientIntegration:
         response = client.search("test document")
         
         assert 'results' in response
-        print(response)
         assert isinstance(response['results'], dict)
 
     def test_rag_query(self, client: RAGClient, ingested_document: dict):
