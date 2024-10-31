@@ -12,6 +12,7 @@ services:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ATLAS_DB=${ATLAS_DB}
       - BASE_URL=http://r2r-r2r-1:7272  # Change this to the actual r2r service name
       - LOG_LEVEL=INFO
     volumes:
