@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
@@ -6,10 +6,15 @@ import requests
 import json
 import logging
 from datetime import datetime
+from sqlalchemy.orm import Session
+from app.db.database import get_db, engine
+from app.db.models import Base
 
+from app.db.models.user import User
 from app.models.document import DocumentItem, DocumentsResponse, DeleteResponse
 from app.models.rag import RagRequest, RagResponse
 from app.models.search import SearchRequest, SearchResponse
+from app.models.signup import SignupRequest
 from app.utils.http import make_request
 from app.config import get_settings
 
@@ -213,6 +218,56 @@ async def health_check():
             "rag_server": "disconnected",
             "error": str(e)
         }
+    
+@app.post("/signup")
+async def signup(
+   signup_data: SignupRequest,
+   db: Session = Depends(get_db)
+):
+   """
+   Sign up for a new account
+   """
+   # Check if user already exists
+   existing_user = db.query(User).filter(
+       (User.email == signup_data.email) | 
+       (User.id == signup_data.r2r_user_id)
+   ).first()
+   
+   if existing_user:
+       raise HTTPException(
+           status_code=400,
+           detail="User with this email or ID already exists"
+       )
+   
+   # Create new user
+   new_user = User(
+       id=signup_data.r2r_user_id,
+       email=signup_data.email,
+       subscription_tier=signup_data.subscription_tier
+   )
+   
+   try:
+       db.add(new_user)
+       db.commit()
+       db.refresh(new_user)
+       
+       return {
+           "message": "User created successfully",
+           "user": {
+               "id": new_user.id,
+               "email": new_user.email,
+               "subscription_tier": new_user.subscription_tier,
+               "created_at": new_user.created_at
+           }
+       }
+       
+   except Exception as e:
+       db.rollback()
+       raise HTTPException(
+           status_code=500,
+           detail=f"Error creating user: {str(e)}"
+       )
+
 
 if __name__ == "__main__":
     import uvicorn

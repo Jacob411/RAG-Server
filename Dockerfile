@@ -35,5 +35,5 @@ USER appuser
 # Expose the port for FastAPI
 EXPOSE 8000
 
-# Command to start the FastAPI server
-CMD ["python", "-m", "app.main"]
+# Command to run the create_tables script and then start the FastAPI server
+CMD ["sh", "-c", "python app/db/create_tables.py && python -m app.main"]
